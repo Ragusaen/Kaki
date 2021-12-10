@@ -1,7 +1,4 @@
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
-import org.jetbrains.kotlin.gradle.plugin.KotlinPlatformType.jvm
-import org.gradle.jvm.tasks.Jar
-import org.jetbrains.kotlin.ir.backend.js.compile
 
 plugins {
     val kotlinVersion = "1.5.31"

@@ -1,6 +1,6 @@
 /artefact/
-/graphics_out/*
-/petri_out/*
+/graphics_out/
+/petri_out/
 *.pnml
 *.q
 *.svg
