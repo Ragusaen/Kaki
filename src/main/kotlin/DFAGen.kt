@@ -20,8 +20,14 @@ fun generateDFAFromUSMProperties(usm: UpdateSynthesisModel): DFA<Switch> {
     val conditionalEnforcementNFA = genConditionalEnforcementDFA(usm)
     if (Options.drawGraphs) conditionalEnforcementNFA.toGraphviz().toFile(File(GRAPHICS_OUT + "/condEnf.svg"))
 
+    val alternativeWaypointNFA = genAlternativeWaypointDFA(usm)
+    if (Options.drawGraphs) alternativeWaypointNFA.toGraphviz().toFile(File(GRAPHICS_OUT + "/altWaypoint.svg"))
+
     // Intersect the reachability NFA with the waypoints
-    val res = combinedWaypointNFA intersect reachabilityNFA intersect conditionalEnforcementNFA
+    val res = combinedWaypointNFA intersect
+            reachabilityNFA intersect
+            conditionalEnforcementNFA intersect
+            alternativeWaypointNFA
     return res
 }
 
@@ -41,8 +47,8 @@ fun genCombinedWaypointDFA(usm: UpdateSynthesisModel): DFA<Switch> {
     }
 }
 
-fun genConditionalEnforcementDFA(usm: UpdateSynthesisModel) =
-    dfaOf(usm.switches) { d ->
+fun genConditionalEnforcementDFA(usm: UpdateSynthesisModel): DFA<Switch> {
+    val condEnfDFA = dfaOf(usm.switches) { d ->
         val sI = d.state(initial = true, final = true)
         if (usm.conditionalEnforcement == null)
             return@dfaOf
@@ -54,6 +60,36 @@ fun genConditionalEnforcementDFA(usm: UpdateSynthesisModel) =
         ss.edgeTo(sF, usm.conditionalEnforcement.sPrime)
         sI.edgeTo(sF, usm.conditionalEnforcement.sPrime)
     }
+
+
+    if(Options.noTopologicalNFAReduction)
+        return condEnfDFA
+
+    val pseudoCUSP = generateCUSPTFromCUSP(generateCUSPFromUSM(usm, dfaOf(usm.switches) { it.state(initial = true) }))
+    val pto = partialTopologicalOrder(pseudoCUSP)
+
+    return DFATopologicalOrderReduction(condEnfDFA, pto)
+}
+
+fun genAlternativeWaypointDFA(usm: UpdateSynthesisModel): DFA<Switch> {
+    val altWayDFA = dfaOf(usm.switches) { d ->
+        val sI = d.state(initial = true)
+        if (usm.alternativeWaypoint == null)
+            return@dfaOf
+
+        val sF = d.state(final = true)
+        sI.edgeTo(sF, usm.alternativeWaypoint.s1)
+        sI.edgeTo(sF, usm.alternativeWaypoint.s2)
+    }
+
+    if(Options.noTopologicalNFAReduction)
+        return altWayDFA
+
+    val pseudoCUSP = generateCUSPTFromCUSP(generateCUSPFromUSM(usm, dfaOf(usm.switches) { it.state(initial = true) }))
+    val pto = partialTopologicalOrder(pseudoCUSP)
+
+    return DFATopologicalOrderReduction(altWayDFA, pto)
+}
 
 fun genReachabilityDFA(usm: UpdateSynthesisModel): DFA<Switch> =
     dfaOf<Switch>(usm.switches) { d ->
@@ -79,6 +115,9 @@ fun waypointDFA(usm: UpdateSynthesisModel, w: Switch) =
 fun DFATopologicalOrderReduction(dfa: DFA<Switch>, pto: List<SCC>): DFA<Switch> {
     val relLabels = dfa.relevantLabels().toSet()
     val order = pto.map { it intersect relLabels }.filter { it.isNotEmpty() }
+
+    if (order.isEmpty())
+        return dfa
 
     val ptoDFA = dfaOf<Switch>(dfa.alphabet) { d ->
         val states = listOf(d.state(initial = true)) + (1 until order.size).map { d.state() } + listOf(d.state(final = true))

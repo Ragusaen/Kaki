@@ -2,6 +2,9 @@ import kotlinx.cli.ArgParser
 import kotlinx.cli.ArgType
 import kotlinx.cli.default
 import translate.*
+import utils.setConditionalEnforcementToUSM
+import utils.generateNewFilesByRandom
+import utils.setAlternativeWaypointToUSM
 import verification.Verifier
 import verification.sequentialSearch
 import java.io.File
@@ -152,6 +155,8 @@ fun runProblem() {
 
             val pnml = generatePnmlFileFromPetriGame(petriGame)
             if (Options.debugPath != null) {
+                if (!File(PETRI_OUT).exists())
+                    File("$PETRI_OUT/").mkdir()
                 File(PETRI_OUT + "/" + Options.debugPath!! + "_model$i.pnml").writeText(pnml)
                 File(PETRI_OUT + "/" + Options.debugPath!! + "_query$i.q").writeText(queryFile.readText())
             }
@@ -298,6 +303,9 @@ const val version = "1.8"
 
 fun main(args: Array<String>) {
     println("Version: $version \n ${args.joinToString(" ")}")
+
+//    generateNewFilesByRandom({ u, r -> setConditionalEnforcementToUSM(u, r) }, Path.of("""artefact/data/zoo_json"""), "_cond_enf", 0)
+//    return
 
     Options.argParser.parse(args)
     if (Options.onlyFLIPSubpaths != null) calcFlipSubpaths()
