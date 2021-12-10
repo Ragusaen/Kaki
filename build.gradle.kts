@@ -4,6 +4,7 @@ plugins {
     val kotlinVersion = "1.5.31"
     kotlin("jvm") version kotlinVersion
     kotlin("plugin.serialization") version kotlinVersion
+    application
 }
 
 group = "me.ragusa"
@@ -17,11 +18,15 @@ tasks.withType<KotlinCompile> {
     kotlinOptions.jvmTarget = "16"
 }
 
+java {
+    sourceCompatibility = JavaVersion.VERSION_16
+    targetCompatibility = JavaVersion.VERSION_16
+}
+
 kotlin {
     sourceSets {
         val main by getting {
             dependencies {
-                // Use the Kotlin JDK 8 standard library.
                 implementation("org.jetbrains.kotlin:kotlin-stdlib:1.5.31")
 
                 implementation("org.jetbrains.kotlinx:kotlinx-cli:0.3.4")
@@ -41,12 +46,18 @@ kotlin {
 
 tasks {
     jar {
+        duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+
         archiveFileName.set("Kaki.jar")
         manifest {
             attributes["Main-Class"] = "MainKt"
         }
-        // To add all of the dependencies
+
+        // To add all the dependencies
         from(sourceSets.main.get().output)
         dependsOn(configurations.runtimeClasspath)
+        from({
+            configurations.runtimeClasspath.get().filter { it.name.endsWith("jar") }.map { zipTree(it) }
+        })
     }
 }
