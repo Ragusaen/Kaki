@@ -18,7 +18,7 @@ class Verifier(val modelPath: File) {
         val pro: Process
         pro = Runtime.getRuntime().exec(command)
         pro.waitFor()
-        val output = pro.inputStream.readAllBytes().map { Char(it.toInt()) }.joinToString("")
+        val output = pro.inputStream.readAllBytes().map { it.toInt().toChar() }.joinToString("")
         lastVerificationTime = """Time \(seconds\) *: (\d+\.\d+)""".toRegex().find(output)?.groupValues?.get(1)?.toDouble() ?: -1.0
         if (Options.outputVerifyPN)
             v.High.println(output)
@@ -42,7 +42,7 @@ fun sequentialSearch(verifier: Verifier, queryPath: File, upperBound: Int): List
     var verified: Boolean
     var strategy: String? = null
     var query = queryPath.readText()
-    val tempQueryFile = File.createTempFile("", "query")
+    val tempQueryFile = File.createTempFile("query", "")
     var time: Long
 
     // Test with max amount of batches

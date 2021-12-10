@@ -9,7 +9,8 @@ import java.lang.Integer.max
 import java.nio.file.Path
 import kotlin.system.measureTimeMillis
 
-const val GRAPHICS_OUT = "main/graphics_out"
+const val GRAPHICS_OUT = "graphics_out"
+const val PETRI_OUT = "petri_out"
 
 typealias Switch = Int
 
@@ -133,7 +134,7 @@ fun runProblem() {
 
             v.High.println(eqclasses.joinToString("\n"))
 
-            val modelFile = File.createTempFile("", "_model$i.pnml")
+            val modelFile = File.createTempFile("model$i", ".pnml")
 
             val petriGame: PetriGame
             val queryFile: File
@@ -151,8 +152,8 @@ fun runProblem() {
 
             val pnml = generatePnmlFileFromPetriGame(petriGame)
             if (Options.debugPath != null) {
-                File(Options.debugPath!! + "_model$i.pnml").writeText(pnml)
-                File(Options.debugPath!! + "_query$i.q").writeText(queryFile.readText())
+                File(PETRI_OUT + "/" + Options.debugPath!! + "_model$i.pnml").writeText(pnml)
+                File(PETRI_OUT + "/" + Options.debugPath!! + "_query$i.q").writeText(queryFile.readText())
             }
             modelFile.writeText(pnml)
             v.High.println(

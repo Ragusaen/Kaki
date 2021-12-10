@@ -1,5 +1,6 @@
 package translate
 
+import GRAPHICS_OUT
 import SCC
 import Switch
 import UpdateSynthesisModel
@@ -14,10 +15,10 @@ fun generateDFAFromUSMProperties(usm: UpdateSynthesisModel): DFA<Switch> {
 
     // NFA for waypoint
     val combinedWaypointNFA = genCombinedWaypointDFA(usm)
-    if (Options.drawGraphs) combinedWaypointNFA.toGraphviz().toFile(File("main/graphics_out/waypointdfa.svg"))
+    if (Options.drawGraphs) combinedWaypointNFA.toGraphviz().toFile(File(GRAPHICS_OUT + "/waypointdfa.svg"))
 
     val conditionalEnforcementNFA = genConditionalEnforcementDFA(usm)
-    if (Options.drawGraphs) conditionalEnforcementNFA.toGraphviz().toFile(File("main/graphics_out/condEnf.svg"))
+    if (Options.drawGraphs) conditionalEnforcementNFA.toGraphviz().toFile(File(GRAPHICS_OUT + "/condEnf.svg"))
 
     // Intersect the reachability NFA with the waypoints
     val res = combinedWaypointNFA intersect reachabilityNFA intersect conditionalEnforcementNFA

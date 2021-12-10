@@ -1,6 +1,9 @@
 /artefact/
+/graphics_out/
+/petri_out/
 *.pnml
 *.q
+*.svg
 
 .DS_Store
 .idea/shelf

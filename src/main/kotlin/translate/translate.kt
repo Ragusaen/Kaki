@@ -168,7 +168,7 @@ fun generatePetriGameFromCUSPT(cuspt: CUSPT, eqclasses: Set<EquivalenceClass>): 
     }
 
     // Generate the query
-    val queryFile = File.createTempFile("", "query")
+    val queryFile = File.createTempFile("query", "")
     val DFAFinalStatePlaces = cuspt.policy.finals.map { dfaStateToPlaceMap[it]!! }
 
     queryFile.writeText(generateQuery(DFAFinalStatePlaces))
