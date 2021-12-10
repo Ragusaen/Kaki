@@ -11,7 +11,7 @@ import UpdateSynthesisModel
 import kotlinx.serialization.*
 import kotlinx.serialization.json.Json
 import org.redundent.kotlin.xml.*
-import java.nio.file.Path
+import java.io.File
 
 // Constants used for consistent naming
 const val dfaPrefix = "DFA"
@@ -21,7 +21,7 @@ const val switchPrefix = "SWITCH"
 
 typealias DFAState = Int
 
-data class PetriGameQueryPath(val petriGame: PetriGame, val queryPath: Path, val updateSwitchCount: Int)
+data class PetriGameQueryPath(val petriGame: PetriGame, val queryFile: File, val updateSwitchCount: Int)
 
 private data class Edge(val from: Switch, val to: Switch) {
     override fun toString(): String {
@@ -168,12 +168,12 @@ fun generatePetriGameFromCUSPT(cuspt: CUSPT, eqclasses: Set<EquivalenceClass>): 
     }
 
     // Generate the query
-    val queryPath = kotlin.io.path.createTempFile("query")
+    val queryFile = File.createTempFile("", "query")
     val DFAFinalStatePlaces = cuspt.policy.finals.map { dfaStateToPlaceMap[it]!! }
 
-    queryPath.toFile().writeText(generateQuery(DFAFinalStatePlaces))
+    queryFile.writeText(generateQuery(DFAFinalStatePlaces))
 
-    return PetriGameQueryPath(PetriGame(places, transitions, arcs), queryPath, numSwitchComponents)
+    return PetriGameQueryPath(PetriGame(places, transitions, arcs), queryFile, numSwitchComponents)
 }
 
 private fun createSwitchComponent(eqc: EquivalenceClass, cuspt: CUSPT, edgeToTopologyTransitionMap: Map<Edge, Transition>, switchComponentsFinalPlaces: MutableSet<Place>, pCount: Place, pInvCount: Place, pQueueing: Place, pUpdating: Place, pTotalQueued: Place, pInvTotalUpdated: Place, numSwitchComponents: Int): PetriGame {

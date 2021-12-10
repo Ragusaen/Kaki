@@ -7,8 +7,6 @@ import verification.sequentialSearch
 import java.io.File
 import java.lang.Integer.max
 import java.nio.file.Path
-import kotlin.io.path.readText
-import kotlin.io.path.writeText
 import kotlin.system.measureTimeMillis
 
 const val GRAPHICS_OUT = "main/graphics_out"
@@ -99,7 +97,7 @@ fun generateCUSPTFromCUSP(cusp: CUSP) =
 
 fun runProblem() {
     var time: Long = measureTimeMillis {
-        val jsonText = Options.testCase.readText()
+        val jsonText = File(Options.testCase).readText()
 
         val usm = updateSynthesisModelFromJsonText(jsonText)
 
@@ -135,15 +133,15 @@ fun runProblem() {
 
             v.High.println(eqclasses.joinToString("\n"))
 
-            val modelPath = kotlin.io.path.createTempFile("pnml_model$i")
+            val modelFile = File.createTempFile("", "_model$i.pnml")
 
             val petriGame: PetriGame
-            val queryPath: Path
+            val queryFile: File
             val updateSwitchCount: Int
             time = measureTimeMillis {
                 val (_petriGame, _queryPath, _updateSwitchCount) = generatePetriGameFromCUSPT(subcuspt, eqclasses)
                 petriGame = _petriGame
-                queryPath = _queryPath
+                queryFile = _queryPath
                 updateSwitchCount = _updateSwitchCount
             }
             v.High.println("Translation to Petri game took ${time / 1000.0} seconds.")
@@ -153,10 +151,10 @@ fun runProblem() {
 
             val pnml = generatePnmlFileFromPetriGame(petriGame)
             if (Options.debugPath != null) {
-                Path.of(Options.debugPath!! + "_model$i.pnml").toFile().writeText(pnml)
-                Path.of(Options.debugPath!! + "_query$i.q").toFile().writeText(queryPath.toFile().readText())
+                File(Options.debugPath!! + "_model$i.pnml").writeText(pnml)
+                File(Options.debugPath!! + "_query$i.q").writeText(queryFile.readText())
             }
-            modelPath.writeText(pnml)
+            modelFile.writeText(pnml)
             v.High.println(
                 "Petri game switches: ${usm.switches.size} \nPetri game updateable switches: ${updateSwitchCount}\nPetri game places: ${petriGame.places.size} \nPetri game transitions: ${petriGame.transitions.size}" +
                         "\nPetri game arcs: ${petriGame.arcs.size}\nPetri game initial markings: ${petriGame.places.sumOf { it.initialTokens }}"
@@ -164,8 +162,8 @@ fun runProblem() {
 
             val verifier: Verifier
             time = measureTimeMillis {
-                verifier = Verifier(modelPath)
-                val ub = sequentialSearch(verifier, queryPath, updateSwitchCount)
+                verifier = Verifier(modelFile)
+                val ub = sequentialSearch(verifier, queryFile, updateSwitchCount)
                 val omegaPrime = ub?.mapIndexed { i, b ->
                     if (i == 0)
                         b union eqclasses.filter { it.batchOrder == BatchOrder.FIRST }.fold(setOf()) { acc, a -> acc union a.switches }
@@ -203,7 +201,7 @@ fun runProblem() {
 fun calcFlipSubpaths(){
     var flipSubpaths = mutableListOf<MutableList<Switch>>()
     val time = measureTimeMillis {
-        val jsonText = Options.testCase.readText()
+        val jsonText = File(Options.testCase).readText()
         val usm = updateSynthesisModelFromJsonText(jsonText)
         val combinedWaypointDFA = genCombinedWaypointDFA(usm)
 
@@ -222,12 +220,11 @@ object Options {
     private val _enginePath by argParser.argument(ArgType.String, description = "Path to verifypn-games engine")
     val enginePath: Path by lazy { Path.of(_enginePath) }
 
-    private val _testCase by argParser.argument(
+    val testCase by argParser.argument(
         ArgType.String,
         fullName = "test_case",
         description = "The test case to run on"
     )
-    val testCase: Path by lazy { Path.of(_testCase) }
 
     val drawGraphs by argParser.option(
         ArgType.Boolean,

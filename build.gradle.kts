@@ -1,6 +1,7 @@
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import org.jetbrains.kotlin.gradle.plugin.KotlinPlatformType.jvm
 import org.gradle.jvm.tasks.Jar
+import org.jetbrains.kotlin.ir.backend.js.compile
 
 plugins {
     val kotlinVersion = "1.5.31"
@@ -22,8 +23,10 @@ tasks.withType<KotlinCompile> {
 kotlin {
     sourceSets {
         val main by getting {
-
             dependencies {
+                // Use the Kotlin JDK 8 standard library.
+                implementation("org.jetbrains.kotlin:kotlin-stdlib:1.5.31")
+
                 implementation("org.jetbrains.kotlinx:kotlinx-cli:0.3.4")
 
                 // https://mvnrepository.com/artifact/guru.nidi/graphviz-kotlin
