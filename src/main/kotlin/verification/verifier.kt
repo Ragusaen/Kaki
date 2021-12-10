@@ -3,15 +3,16 @@ package verification
 import Batch
 import Options
 import println
+import java.io.File
 import java.nio.file.Path
 import kotlin.math.floor
 import kotlin.math.roundToInt
 import kotlin.system.measureTimeMillis
 
-class Verifier(val modelPath: Path) {
+class Verifier(val modelPath: File) {
     var lastVerificationTime = -1.0
     fun verifyQuery(queryPath: String): Pair<Boolean, String?> {
-        val command = "${Options.enginePath.toAbsolutePath()} --strategy-output _ ${modelPath.toAbsolutePath()} $queryPath -q 0 -r 0"
+        val command = "${Options.enginePath.toAbsolutePath()} --strategy-output _ ${modelPath.absolutePath} $queryPath -q 0 -r 0"
         if (Options.outputVerifyPN)
             v.High.println(command)
         val pro: Process
@@ -35,13 +36,13 @@ class Verifier(val modelPath: Path) {
     }
 }
 
-fun sequentialSearch(verifier: Verifier, queryPath: Path, upperBound: Int): List<Batch>? {
+fun sequentialSearch(verifier: Verifier, queryPath: File, upperBound: Int): List<Batch>? {
     var case: Int
 
     var verified: Boolean
     var strategy: String? = null
-    var query = queryPath.toFile().readText()
-    val tempQueryFile = kotlin.io.path.createTempFile("query").toFile()
+    var query = queryPath.readText()
+    val tempQueryFile = File.createTempFile("", "query")
     var time: Long
 
     // Test with max amount of batches
