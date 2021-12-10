@@ -133,7 +133,7 @@ fun runProblem() {
 
             v.High.println(eqclasses.joinToString("\n"))
 
-            val modelFile = File.createTempFile("", "_model$i.pnml")
+            val modelFile = File.createTempFile("model$i", ".pnml")
 
             val petriGame: PetriGame
             val queryFile: File
