@@ -1,5 +1,6 @@
 package translate
 
+import CUSPT
 import GRAPHICS_OUT
 import SCC
 import Switch
@@ -32,10 +33,10 @@ fun genCombinedWaypointDFA(usm: UpdateSynthesisModel): DFA<Switch> {
         return waypoints.reduce { acc, it -> acc intersect it }
 
     if (waypoints.size > 1) {
-        val pseudoCUSP = generateCUSPTFromCUSP(generateCUSPFromUSM(usm, dfaOf(usm.switches) { it.state(initial = true) }))
-        val pto = partialTopologicalOrder(pseudoCUSP)
+        val pseudoCUSPT = generateCUSPTFromCUSP(generateCUSPFromUSM(usm, dfaOf(emptySet()) { it.state(initial = true) }))
+        val tto = totalTopologicalOrder(pseudoCUSPT)
 
-        return waypoints.reduce { acc, it -> DFATopologicalOrderReduction(acc intersect it, pto) }
+        return waypoints.reduce { acc, it -> DFATopologicalOrderReduction(acc intersect it, tto) }
     } else {
         return waypoints.reduce { acc, it -> acc intersect it }
     }
@@ -76,18 +77,53 @@ fun waypointDFA(usm: UpdateSynthesisModel, w: Switch) =
         sJ.edgeToDead(w)
     }
 
-fun DFATopologicalOrderReduction(dfa: DFA<Switch>, pto: List<SCC>): DFA<Switch> {
+fun DFATopologicalOrderReduction(dfa: DFA<Switch>, tto: List<Set<Switch>>): DFA<Switch> {
     val relLabels = dfa.relevantLabels().toSet()
-    val order = pto.map { it intersect relLabels }.filter { it.isNotEmpty() }
+    val order = tto.map { it intersect relLabels }.filter { it.isNotEmpty() }
+
+    if (order.size <= 1)
+        return dfa
 
     val ptoDFA = dfaOf<Switch>(dfa.alphabet) { d ->
         val states = listOf(d.state(initial = true)) + (1 until order.size).map { d.state() } + listOf(d.state(final = true))
 
         for ((p, n, o) in states.zipWithNext().zip(order).map { Triple(it.first.first, it.first.second, it.second) }) {
             p.edgeTo(n, o)
-            n.edgeToDead(relLabels - o)
+            p.edgeToDead(relLabels - o)
         }
     }
 
     return dfa intersect ptoDFA
+}
+
+fun totalTopologicalOrder(cuspt: CUSPT): List<Set<Switch>> {
+    val edges = (cuspt.finalRouting.toList() + cuspt.initialRouting.toList()).groupBy { it.first }.map { it.key to it.value.flatMap { it.second } }.toMap()
+    val ptoi = partialTopologicalOrder(cuspt).withIndex()
+    val switchToSCCId: Map<Switch, Int> = ptoi.flatMap { (sccid, scc) -> scc.map { Pair(it, sccid) } }.toMap()
+    val sccNarrowness = ptoi.map { it.index to 0.0 }.toMap().toMutableMap()
+
+    assert(ptoi.first().value == setOf(-1))
+    sccNarrowness[1] = 1.0
+
+    for ((i, scc) in ptoi) {
+        val a = scc.flatMap { edges[it] ?: setOf() }.filter { it !in scc }.map { switchToSCCId[it]!! }.toSet()
+        for (sccid in a) {
+            sccNarrowness[sccid] = sccNarrowness[sccid]!! + sccNarrowness[i]!! / a.size
+        }
+    }
+
+    val bunches = mutableListOf<Set<Switch>>()
+    val next = mutableSetOf<Switch>()
+    for ((i, scc) in ptoi) {
+        if (sccNarrowness[i]!! == 1.0) {
+            bunches.add(next.toSet())
+            next.clear()
+            bunches.add(scc)
+        } else {
+            next.addAll(scc)
+        }
+    }
+    bunches.add(next)
+
+    return bunches.filter { it.isNotEmpty() }
 }
