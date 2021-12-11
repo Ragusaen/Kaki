@@ -122,15 +122,13 @@ fun DFATopologicalOrderReduction(dfa: DFA<Switch>, tto: List<Set<Switch>>): DFA<
     if (order.size <= 1)
         return dfa
 
-    if (order.isEmpty())
-        return dfa
-
     val ptoDFA = dfaOf<Switch>(dfa.alphabet) { d ->
-        val states = listOf(d.state(initial = true)) + (1 until order.size).map { d.state() } + listOf(d.state(final = true))
+        val states = listOf(d.state(initial = true)) + (1 until order.size - 1).map { d.state() } + listOf(d.state(final = true))
 
-        for ((p, n, o) in states.zipWithNext().zip(order).map { Triple(it.first.first, it.first.second, it.second) }) {
+        states.first().edgeToDead(relLabels - order.first())
+        for ((p, n, o) in states.zipWithNext().zip(order.drop(1)).map { Triple(it.first.first, it.first.second, it.second) }) {
             p.edgeTo(n, o)
-            p.edgeToDead(relLabels - o)
+            n.edgeToDead(relLabels - o)
         }
     }
 
