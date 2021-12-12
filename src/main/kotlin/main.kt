@@ -208,7 +208,7 @@ fun calcFlipSubpaths(){
 
         if (Options.drawGraphs) dfa.toGraphviz().toFile(File(GRAPHICS_OUT + "/noreachabilitydfa.svg"))
 
-        flipSubpaths = dfa.getWaypointSubPaths(generateCUSPFromUSM(usm, generateDFAFromUSMProperties(usm)))
+        flipSubpaths = dfa.getFLIPSubPaths(generateCUSPFromUSM(usm, generateDFAFromUSMProperties(usm)))
     }
 
     File(Options.onlyFLIPSubpaths!!).writeText(flipSubpaths.joinToString(";") { it.joinToString(",") })
