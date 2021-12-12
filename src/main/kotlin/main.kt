@@ -294,7 +294,7 @@ object Options {
     val outputVerifyPN by argParser.option(ArgType.Boolean, shortName = "P", description = "output the output from verifypn").default(false)
 }
 
-const val version = "1.10"
+const val version = "1.11"
 
 fun main(args: Array<String>) {
     println("Version: $version \n ${args.joinToString(" ")}")

@@ -45,12 +45,12 @@ fun topologicalDecomposition(cuspt: CUSPT): List<CUSPT> {
     subproblems.removeIf { it.switches.size <= 2 }
 
     val subCusps = subproblems.map { sp ->
-        val dfa = dfaOf<Switch>(sp.switches) { d ->
+        val dfa = dfaOf<Switch>(sp.switches) {
             val initialSwitchState = posDFAState[sp.initSwitch]!!.single()
             val finalSwitchState = if (sp.finalSwitch == -2) posDFAState[sp.finalSwitch]!! else setOf(posDFAState[sp.finalSwitch]!!.single())
 
             val oldToNewState = cuspt.policy.states.associateWith {
-                d.state(initial = it == initialSwitchState, final = it in finalSwitchState)
+                state(initial = it == initialSwitchState, final = it in finalSwitchState)
             }
 
             cuspt.policy.delta.forEach { (from, outgoing) ->
@@ -61,9 +61,9 @@ fun topologicalDecomposition(cuspt: CUSPT): List<CUSPT> {
             }
         }
 
-        val subreachability = dfaOf<Switch>(sp.switches) { d ->
-            val sI = d.state(initial = true)
-            val sF = d.state(final = true)
+        val subreachability = dfaOf<Switch>(sp.switches) {
+            val sI = state(initial = true)
+            val sF = state(final = true)
 
             sI.edgeTo(sF, sp.finalSwitch)
         }
