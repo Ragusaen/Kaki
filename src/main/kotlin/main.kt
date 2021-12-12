@@ -204,13 +204,13 @@ fun calcFlipSubpaths(){
     val time = measureTimeMillis {
         val jsonText = File(Options.testCase).readText()
         val usm = updateSynthesisModelFromJsonText(jsonText)
-        val combinedWaypointDFA = genCombinedWaypointDFA(usm)
+        val dfa = generateDFAFromUSMPropertiesNoReachability(usm)
 
-        if(usm.waypoint.waypoints.count() == 1)
-            flipSubpaths.add(mutableListOf(usm.waypoint.waypoints[0]))
-        else
-            flipSubpaths = combinedWaypointDFA.getWaypointSubPaths(generateCUSPFromUSM(usm, generateDFAFromUSMProperties(usm)))
+        if (Options.drawGraphs) dfa.toGraphviz().toFile(File(GRAPHICS_OUT + "/noreachabilitydfa.svg"))
+
+        flipSubpaths = dfa.getWaypointSubPaths(generateCUSPFromUSM(usm, generateDFAFromUSMProperties(usm)))
     }
+
     File(Options.onlyFLIPSubpaths!!).writeText(flipSubpaths.joinToString(";") { it.joinToString(",") })
     println("Flip subpaths generated in ${time / 1000.0} seconds!")
 }

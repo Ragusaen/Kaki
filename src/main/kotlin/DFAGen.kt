@@ -14,6 +14,16 @@ fun generateDFAFromUSMProperties(usm: UpdateSynthesisModel): DFA<Switch> {
     // NFA for reachability
     val reachabilityNFA = genReachabilityDFA(usm)
 
+    if(Options.noTopologicalNFAReduction)
+        return reachabilityNFA intersect generateDFAFromUSMPropertiesNoReachability(usm)
+
+    val pseudoCUSP = generateCUSPTFromCUSP(generateCUSPFromUSM(usm, dfaOf(usm.switches) { it.state(initial = true) }))
+    val pto = partialTopologicalOrder(pseudoCUSP)
+
+    return DFATopologicalOrderReduction(reachabilityNFA intersect generateDFAFromUSMPropertiesNoReachability(usm), pto)
+}
+
+fun generateDFAFromUSMPropertiesNoReachability(usm: UpdateSynthesisModel): DFA<Switch> {
     // NFA for waypoint
     val combinedWaypointNFA = genCombinedWaypointDFA(usm)
     if (Options.drawGraphs) combinedWaypointNFA.toGraphviz().toFile(File(GRAPHICS_OUT + "/waypointdfa.svg"))
@@ -24,13 +34,16 @@ fun generateDFAFromUSMProperties(usm: UpdateSynthesisModel): DFA<Switch> {
     val alternativeWaypointNFA = genAlternativeWaypointDFA(usm)
     if (Options.drawGraphs) alternativeWaypointNFA.toGraphviz().toFile(File(GRAPHICS_OUT + "/altWaypoint.svg"))
 
-    // Intersect the reachability NFA with the waypoints
-    val res = combinedWaypointNFA intersect
-            reachabilityNFA intersect
-            conditionalEnforcementNFA intersect
-            alternativeWaypointNFA
-    return res
+    if(Options.noTopologicalNFAReduction)
+        return combinedWaypointNFA intersect conditionalEnforcementNFA intersect alternativeWaypointNFA
+
+
+    val pseudoCUSP = generateCUSPTFromCUSP(generateCUSPFromUSM(usm, dfaOf(usm.switches) { it.state(initial = true) }))
+    val pto = partialTopologicalOrder(pseudoCUSP)
+
+    return DFATopologicalOrderReduction(combinedWaypointNFA intersect conditionalEnforcementNFA intersect alternativeWaypointNFA, pto)
 }
+
 
 fun genCombinedWaypointDFA(usm: UpdateSynthesisModel): DFA<Switch> {
     val waypoints = waypointDFAs(usm)
