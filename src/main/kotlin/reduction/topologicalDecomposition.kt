@@ -27,13 +27,11 @@ fun topologicalDecomposition(cuspt: CUSPT): List<CUSPT> {
             currentSubproblem = Subproblem(mutableSetOf(), scc.first(), -1)
         }
 
-        for (s in scc) {
-            val nexts = (cuspt.initialRouting[s] ?: setOf()) union (cuspt.finalRouting[s] ?: setOf())
-            val outdegree = nexts.size
-
-            nexts.filter { it !in scc }.map { switchToSCCId[it]!! }.forEach {
-                sccNarrowness[it] = sccNarrowness[it]!! + (sccNarrowness[i]!! / outdegree)
-            }
+        val nexts = scc.flatMap { s -> (cuspt.initialRouting[s] ?: setOf()) union (cuspt.finalRouting[s] ?: setOf()) }
+            .filter { it !in scc }
+        val outdegree = nexts.size
+        nexts.map { switchToSCCId[it]!! }.forEach {
+            sccNarrowness[it] = sccNarrowness[it]!! + (sccNarrowness[i]!! / outdegree)
         }
         currentSubproblem.switches.addAll(scc)
     }
