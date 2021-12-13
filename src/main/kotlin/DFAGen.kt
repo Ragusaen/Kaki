@@ -50,6 +50,9 @@ fun genCombinedWaypointDFA(usm: UpdateSynthesisModel): DFA<Switch> {
     if(Options.noTopologicalNFAReduction)
         return waypoints.reduce { acc, it -> acc intersect it }
 
+    if(waypoints.size == 0)
+        return dfaOf(usm.switches){ state(true,true) }
+
     if (waypoints.size > 1) {
         val pseudoCUSPT = generateCUSPTFromCUSP(generateCUSPFromUSM(usm, DFA.acceptingAll(usm.switches)))
         val tto = totalTopologicalOrder(pseudoCUSPT)
