@@ -2,9 +2,6 @@ import kotlinx.cli.ArgParser
 import kotlinx.cli.ArgType
 import kotlinx.cli.default
 import translate.*
-import utils.setConditionalEnforcementToUSM
-import utils.generateNewFilesByRandom
-import utils.setAlternativeWaypointToUSM
 import verification.Verifier
 import verification.sequentialSearch
 import java.io.File
@@ -209,7 +206,7 @@ fun calcFlipSubpaths(){
     val time = measureTimeMillis {
         val jsonText = File(Options.testCase).readText()
         val usm = updateSynthesisModelFromJsonText(jsonText)
-        val combinedWaypointDFA = genCombinedWaypointDFA(usm)
+        val combinedWaypointDFA = genCombinedDFAOf(usm, usm.waypoint.waypoints.map { waypointDFA(usm, it) })
 
         if(usm.waypoint.waypoints.count() == 1)
             flipSubpaths.add(mutableListOf(usm.waypoint.waypoints[0]))
