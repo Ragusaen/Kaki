@@ -73,10 +73,12 @@ fun genConditionalEnforcementDFA(usm: UpdateSynthesisModel): DFA<Switch> {
 
 fun genAlternativeWaypointDFA(usm: UpdateSynthesisModel): DFA<Switch> {
     val altWayDFA = dfaOf(usm.switches) { d ->
-        val sI = d.state(initial = true)
-        if (usm.alternativeWaypoint == null)
+        if (usm.alternativeWaypoint == null) {
+            d.state(initial = true, final = true)
             return@dfaOf
+        }
 
+        val sI = d.state(initial = true)
         val sF = d.state(final = true)
         sI.edgeTo(sF, usm.alternativeWaypoint.s1)
         sI.edgeTo(sF, usm.alternativeWaypoint.s2)

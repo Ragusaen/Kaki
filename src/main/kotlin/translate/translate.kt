@@ -159,7 +159,7 @@ fun generatePetriGameFromCUSPT(cuspt: CUSPT, eqclasses: Set<EquivalenceClass>): 
     arcs.add(Arc(tInject, turnSwitch))
 
     // Arcs from turn place to topology transitions
-    for ((e, t) in edgeToTopologyTransitionMap.filter { it.key.to in cuspt.policy.relevantLabels() })
+    for ((_, t) in edgeToTopologyTransitionMap.filter { it.key.to in cuspt.policy.relevantLabels() })
         arcs.add(Arc(turnSwitch, t))
 
     // Arcs from DFA transitions to turn place
