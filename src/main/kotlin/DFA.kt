@@ -193,7 +193,7 @@ fun <T> DFA<T>.export(path: String){
     File(path).writeText(output)
 }
 
-fun DFA<Switch>.getFLIPSubPaths(cusp: CUSP) : MutableList<MutableList<Switch>>{
+fun DFA<Switch>.getFLIPSubPaths(cusp: CUSP) : List<List<Switch>>{
     val currentPath = mutableListOf<Switch>()
     val pathsFound = mutableListOf<MutableList<Switch>>()
 

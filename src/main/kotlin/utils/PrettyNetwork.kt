@@ -7,7 +7,7 @@ fun outputPrettyNetwork(usm: UpdateSynthesisModel): Renderer {
     val g = graph(directed = true) {
         usm.reachability.initialNode.toString().get().attrs().add("shape","hexagon")
         usm.reachability.finalNode.toString().get().attrs().add("shape","doublecircle")
-        usm.waypoint.waypoints.forEach { it.toString().get().attrs().add("shape", "house") }
+        usm.waypoint?.waypoints?.forEach { it.toString().get().attrs().add("shape", "house") }
         if (usm.conditionalEnforcement != null) {
             usm.conditionalEnforcement.s.toString().get().attrs().add("shape", "rarrow")
             usm.conditionalEnforcement.sPrime.toString().get().attrs().add("shape", "box")

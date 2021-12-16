@@ -1,0 +1,43 @@
+{
+    "Initial_routing": [
+        [
+            1,
+            2
+        ],
+        [
+            2,
+            3
+        ]
+    ],
+    "Final_routing": [
+        [
+            1,
+            4
+        ],
+        [
+            4,
+            2
+        ],
+        [
+            2,
+            5
+        ],
+        [
+            5,
+            3
+        ]
+    ],
+    "Properties": {
+        "ConditionalEnforcement":{
+            "s":4,
+            "sPrime":5
+        },
+        "LoopFreedom": {
+            "startNode": 1
+        },
+        "Reachability": {
+            "startNode": 1,
+            "finalNode": 3
+        }
+    }
+}

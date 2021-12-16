@@ -11,6 +11,7 @@ import UpdateSynthesisModel
 import kotlinx.serialization.*
 import kotlinx.serialization.json.Json
 import org.redundent.kotlin.xml.*
+import pcreateTempFile
 import java.io.File
 
 // Constants used for consistent naming
@@ -168,7 +169,7 @@ fun generatePetriGameFromCUSPT(cuspt: CUSPT, eqclasses: Set<EquivalenceClass>): 
     }
 
     // Generate the query
-    val queryFile = File.createTempFile("query", "")
+    val queryFile = pcreateTempFile("query")
     val DFAFinalStatePlaces = cuspt.policy.finals.map { dfaStateToPlaceMap[it]!! }
 
     queryFile.writeText(generateQuery(DFAFinalStatePlaces))

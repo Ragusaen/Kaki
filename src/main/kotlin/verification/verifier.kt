@@ -2,6 +2,7 @@ package verification
 
 import Batch
 import Options
+import pcreateTempFile
 import println
 import java.io.File
 import java.nio.file.Path
@@ -42,7 +43,7 @@ fun sequentialSearch(verifier: Verifier, queryPath: File, upperBound: Int): List
     var verified: Boolean
     var strategy: String? = null
     var query = queryPath.readText()
-    val tempQueryFile = File.createTempFile("query", "")
+    val tempQueryFile = pcreateTempFile("query")
     var time: Long
 
     // Test with max amount of batches

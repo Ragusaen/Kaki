@@ -7,12 +7,17 @@ import verification.sequentialSearch
 import java.io.File
 import java.lang.Integer.max
 import java.nio.file.Path
+import kotlin.random.Random
+import kotlin.random.nextUInt
 import kotlin.system.measureTimeMillis
 
 const val GRAPHICS_OUT = "graphics_out"
 const val PETRI_OUT = "petri_out"
 
 typealias Switch = Int
+
+fun pcreateTempFile(s: String): File =
+    File.createTempFile("$s-tmp", "kaki")
 
 data class CUSP(
     val ingressSwitches: Set<Switch>,
@@ -134,7 +139,7 @@ fun runProblem() {
 
             v.High.println(eqclasses.joinToString("\n"))
 
-            val modelFile = File.createTempFile("model$i", ".pnml")
+            val modelFile = pcreateTempFile("model$i.pnml")
 
             val petriGame: PetriGame
             val queryFile: File
@@ -200,10 +205,11 @@ fun runProblem() {
 }
 
 fun calcFlipSubpaths(){
-    var flipSubpaths = mutableListOf<MutableList<Switch>>()
+    var flipSubpaths: List<List<Switch>>
     val time = measureTimeMillis {
         val jsonText = File(Options.testCase).readText()
         val usm = updateSynthesisModelFromJsonText(jsonText)
+        Cached.usm = usm
         val dfa = generateDFAFromUSMPropertiesNoReachability(usm)
 
         if (Options.drawGraphs) dfa.toGraphviz().toFile(File(GRAPHICS_OUT + "/noreachabilitydfa.svg"))
@@ -324,7 +330,7 @@ fun sols(s: Set<Int>): Set<ConupSeq> =
     }.toSet()
 
 fun test() {
-    val ls = 4
+    val ls = 8
     val switches = (1..ls).toSet()
 
     println(switches.powersetne())

@@ -13,7 +13,7 @@ data class UpdateSynthesisModel(
 
     // routing properties
     val reachability: Reachability = _properties.reachability
-    val waypoint: Waypoint = _properties.waypoint
+    val waypoint: Waypoint? = _properties.waypoint
     val conditionalEnforcement: ConditionalEnforcement? = _properties.conditionalEnforcement
     val alternativeWaypoint: AlternativeWaypoint? = _properties.alternativeWaypoint
 
@@ -59,7 +59,7 @@ data class UpdateSynthesisModel(
 
     @Serializable
     open class Properties (
-        @SerialName("Waypoint")     val waypoint: Waypoint,
+        @SerialName("Waypoint")     val waypoint: Waypoint? = null,
         @SerialName("ConditionalEnforcement") val conditionalEnforcement: ConditionalEnforcement? = null,
         @SerialName("AlternativeWaypoint") val alternativeWaypoint: AlternativeWaypoint? = null,
         @SerialName("LoopFreedom")  val loopFreedom: LoopFreedom,
