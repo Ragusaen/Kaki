@@ -2,7 +2,6 @@ package translate
 
 import CUSP
 import Switch
-import guru.nidi.graphviz.attribute.Attributes
 import guru.nidi.graphviz.engine.Format
 import guru.nidi.graphviz.engine.Renderer
 import guru.nidi.graphviz.graph
@@ -12,10 +11,10 @@ import java.io.File
 
 private typealias State = Int
 
-fun <T> dfaOf(alphabet: Set<T>, f: (dfa: DFAContext<T>) -> Unit): DFA<T> {
-    val dfaContext = DFAContext<T>(alphabet)
+fun <T> dfaOf(alphabet: Set<T>, f: DFAContext<T>.() -> Unit): DFA<T> {
+    val dfaContext = DFAContext(alphabet)
 
-    f(dfaContext)
+    dfaContext.f()
 
     return dfaContext.toDFA()
 }
@@ -73,6 +72,8 @@ class DFAContext<T>(val alphabet: Set<T>) {
 class DFA<T>(val delta: Map<State, Map<T, State>>, val initial: State, val finals: Set<State>, val alphabet: Set<T>) {
     companion object {
         const val deadstate = -1
+
+        fun <T> acceptingAll(alphabet: Set<T>) = dfaOf(alphabet) { state(initial = true, final = true) }
     }
 
     val states = delta.keys + delta.flatMap { it.value.map { it.value } }
@@ -88,41 +89,43 @@ class DFA<T>(val delta: Map<State, Map<T, State>>, val initial: State, val final
 
 // This assumes they have the same alphabet
 infix fun <T> DFA<T>.intersect(other: DFA<T>): DFA<T> =
-    dfaOf(this.alphabet) { d ->
-        val h = mutableMapOf<Pair<State, State>, DFAContext.State<T>>()
-        val canReachFinal = mutableMapOf<DFAContext.State<T>, Boolean>()
-        fun expand(s: Pair<State, State>): DFAContext.State<T> {
-            if (s !in h) {
-                if (s.first == DFA.deadstate || s.second == DFA.deadstate) {
-                    h[s] = d.deadstate
-                    canReachFinal[h[s]!!] = false
-                } else {
-                    h[s] = d.state(
-                        initial = s.first == this.initial && s.second == other.initial,
-                        final = s.first in this.finals && s.second in other.finals
-                    )
-                    canReachFinal[h[s]!!] = s.first in this.finals && s.second in other.finals
+    this.let { thisDFA ->
+        dfaOf(this.alphabet) {
+            val h = mutableMapOf<Pair<State, State>, DFAContext.State<T>>()
+            val canReachFinal = mutableMapOf<DFAContext.State<T>, Boolean>()
+            fun expand(s: Pair<State, State>): DFAContext.State<T> {
+                if (s !in h) {
+                    if (s.first == DFA.deadstate || s.second == DFA.deadstate) {
+                        h[s] = deadstate
+                        canReachFinal[h[s]!!] = false
+                    } else {
+                        h[s] = state(
+                            initial = s.first == thisDFA.initial && s.second == other.initial,
+                            final = s.first in thisDFA.finals && s.second in other.finals
+                        )
+                        canReachFinal[h[s]!!] = s.first in thisDFA.finals && s.second in other.finals
 
-                    val nextStates = (this[s.first].keys + other[s.second].keys).map { l ->
-                        val t = expand(Pair(this[s.first, l], other[s.second, l]))
+                        val nextStates = (thisDFA[s.first].keys + other[s.second].keys).map { l ->
+                            val t = expand(Pair(thisDFA[s.first, l], other[s.second, l]))
 
-                        canReachFinal[h[s]!!] = (canReachFinal[h[s]!!] ?: false) || (canReachFinal[t] ?: false)
-                        Pair(t, l)
-                    }
+                            canReachFinal[h[s]!!] = (canReachFinal[h[s]!!] ?: false) || (canReachFinal[t] ?: false)
+                            Pair(t, l)
+                        }
 
-                    for ((ns, l) in nextStates) {
-                        if (canReachFinal[ns] == true) {
-                            h[s]!!.edgeTo(ns, l)
-                        } else if (canReachFinal[h[s]!!] == true ) {
-                            h[s]!!.edgeToDead(l)
+                        for ((ns, l) in nextStates) {
+                            if (canReachFinal[ns] == true) {
+                                h[s]!!.edgeTo(ns, l)
+                            } else if (canReachFinal[h[s]!!] == true ) {
+                                h[s]!!.edgeToDead(l)
+                            }
                         }
                     }
                 }
+                return h[s]!!
             }
-            return h[s]!!
-        }
 
-        expand(Pair(this.initial, other.initial))
+            expand(Pair(thisDFA.initial, other.initial))
+        }
     }
 
 fun <T> DFA<T>.relevantLabels() =
@@ -190,7 +193,7 @@ fun <T> DFA<T>.export(path: String){
     File(path).writeText(output)
 }
 
-fun DFA<Switch>.getWaypointSubPaths(cusp: CUSP) : MutableList<MutableList<Switch>>{
+fun DFA<Switch>.getFLIPSubPaths(cusp: CUSP) : MutableList<MutableList<Switch>>{
     val currentPath = mutableListOf<Switch>()
     val pathsFound = mutableListOf<MutableList<Switch>>()
 

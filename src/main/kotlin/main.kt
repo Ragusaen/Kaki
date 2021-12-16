@@ -2,6 +2,7 @@ import kotlinx.cli.ArgParser
 import kotlinx.cli.ArgType
 import kotlinx.cli.default
 import translate.*
+import utils.*
 import verification.Verifier
 import verification.sequentialSearch
 import java.io.File
@@ -123,6 +124,7 @@ fun runProblem() {
         }
         v.Low.println("Decomposed topology into ${subcuspts.size} subproblems")
         v.Low.println("Topological decomposition took ${time / 1000.0} seconds")
+        v.High.println("Switches of subproblems: ${subcuspts.map { _cuspt -> _cuspt.allSwitches.count { _cuspt.initialRouting[it] != _cuspt.finalRouting[it] } }}")
 
         var omega = listOf<Batch>()
         var unsolvable = false
@@ -206,13 +208,13 @@ fun calcFlipSubpaths(){
     val time = measureTimeMillis {
         val jsonText = File(Options.testCase).readText()
         val usm = updateSynthesisModelFromJsonText(jsonText)
-        val combinedWaypointDFA = genCombinedDFAOf(usm, usm.waypoint.waypoints.map { waypointDFA(usm, it) })
+        val dfa = generateDFAFromUSMPropertiesNoReachability(usm)
 
-        if(usm.waypoint.waypoints.count() == 1)
-            flipSubpaths.add(mutableListOf(usm.waypoint.waypoints[0]))
-        else
-            flipSubpaths = combinedWaypointDFA.getWaypointSubPaths(generateCUSPFromUSM(usm, generateDFAFromUSMProperties(usm)))
+        if (Options.drawGraphs) dfa.toGraphviz().toFile(File(GRAPHICS_OUT + "/noreachabilitydfa.svg"))
+
+        flipSubpaths = dfa.getFLIPSubPaths(generateCUSPFromUSM(usm, generateDFAFromUSMProperties(usm)))
     }
+
     File(Options.onlyFLIPSubpaths!!).writeText(flipSubpaths.joinToString(";") { it.joinToString(",") })
     println("Flip subpaths generated in ${time / 1000.0} seconds!")
 }
@@ -296,12 +298,12 @@ object Options {
     val outputVerifyPN by argParser.option(ArgType.Boolean, shortName = "P", description = "output the output from verifypn").default(false)
 }
 
-const val version = "1.8"
+const val version = "1.12"
 
 fun main(args: Array<String>) {
     println("Version: $version \n ${args.joinToString(" ")}")
 
-//    generateNewFilesByRandom({ u, r -> setConditionalEnforcementToUSM(u, r) }, Path.of("""artefact/data/zoo_json"""), "_cond_enf", 0)
+//    generateNewFilesByRandom({ u, r -> addAlternativeWaypointToUSM(u, r) }, Path.of("""artefact/data/zoo_json"""), "_alt_waypoint", 0, 4)
 //    return
 
     Options.argParser.parse(args)

@@ -13,50 +13,56 @@ fun generateNewFilesByRandom(
 ) {
     val dir = pathToFolder.toFile()
     assert(dir.isDirectory)
-    val newDir = Path.of(pathToFolder.toString() + ext).toFile()
+    val newDir = Path.of(pathToFolder.toString() + ext + numMore).toFile()
     if (!newDir.exists()) newDir.mkdir()
 
     for (file in dir.walk().iterator()) {
         if (file.isDirectory) continue
-        for (i in 0..numMore) {
-            val random = Random(randomSeed + 13 * numMore)
-            val newUSM = transform(updateSynthesisModelFromJsonText(file.readText()), random)
-            if (newUSM == null) {
-                println("Failed: Could not transform ${file.name}")
+        var oldUSM: UpdateSynthesisModel = updateSynthesisModelFromJsonText(file.readText())
+        oldUSM = oldUSM.clearProperties()
+        var newUSM: UpdateSynthesisModel? = null
+        for (i in 0 until numMore) {
+            val random = Random(randomSeed + 13 * i)
+            newUSM = transform(oldUSM, random)
+            if (newUSM == null)
                 continue
-            }
-            val jElem = Json.encodeToJsonElement(newUSM)
-
-            val newPath = newDir.absolutePath + File.separator + file.name
-            val newFile = File(newPath)
-            if (!newFile.exists()) newFile.createNewFile()
-            newFile.writeText(jElem.toString())
-
-            println("Transform ${file.name}")
+            oldUSM = newUSM
         }
+
+        if (newUSM == null) {
+            println("Failed: Could not transform ${file.name}")
+            continue
+        }
+        val jElem = Json.encodeToJsonElement(newUSM)
+
+        val newPath = newDir.absolutePath + File.separator + file.name
+        val newFile = File(newPath)
+        if (!newFile.exists()) newFile.createNewFile()
+        newFile.writeText(jElem.toString())
+
+        println("Transform ${file.name}")
     }
 }
 
-fun addRandomWaypointsToNetworks(
+fun addWaypointsToUSM(
     usm: UpdateSynthesisModel, random: Random
 ): UpdateSynthesisModel? {
     val candidateSwitches =
         usm.initialRouting.filter { i_it -> usm.finalRouting.map { it.source }.contains(i_it.source) }.map { it.source }
             .toMutableList()
-    candidateSwitches -= usm.waypoint.waypoints
+    if (usm.waypoint != null)
+        candidateSwitches -= usm.waypoint.waypoints
     if (candidateSwitches.isEmpty())
         return null
 
     val new = candidateSwitches.sorted()[random.nextInt(candidateSwitches.size)]
 
     val newUsm = usm.addWaypoints(listOf(new))
-    assert(newUsm.waypoint.waypoints.size == newUsm.waypoint.waypoints.distinct().size)
-    assert(newUsm.waypoint.waypoints.size == usm.waypoint.waypoints.size + 1)
 
     return newUsm
 }
 
-fun setConditionalEnforcementToUSM(usm: UpdateSynthesisModel, random: Random): UpdateSynthesisModel? {
+fun addConditionalEnforcementToUSM(usm: UpdateSynthesisModel, random: Random): UpdateSynthesisModel? {
     val candidateSwitches = usm.switches.toMutableList()
     if (candidateSwitches.size < 2)
         return null
@@ -79,7 +85,7 @@ fun setConditionalEnforcementToUSM(usm: UpdateSynthesisModel, random: Random): U
     return usm.setConditionalEnforcement(s, sPrime)
 }
 
-fun addAlternativeWaypointToUSM(usm: UpdateSynthesisModel, random: Random, numMoreAltWaypoints: Int): UpdateSynthesisModel? {
+fun addAlternativeWaypointToUSM(usm: UpdateSynthesisModel, random: Random): UpdateSynthesisModel? {
     val candidateSwitches = usm.switches.toMutableList()
     if (candidateSwitches.size < 2)
         return null
@@ -105,7 +111,7 @@ fun UpdateSynthesisModel.addWaypoints(waypoints: List<Int>): UpdateSynthesisMode
     val finalRouting = this.finalRouting.map { listOf(it.source, it.target) }.toSet()
 
     val newWaypoint =
-        UpdateSynthesisModel.Waypoint(reachability.initialNode, reachability.finalNode, waypoint.waypoints + waypoints)
+        UpdateSynthesisModel.Waypoint(reachability.initialNode, reachability.finalNode, (waypoint?.waypoints ?: listOf()) + waypoints)
     val properties = UpdateSynthesisModel.Properties(
         newWaypoint, conditionalEnforcements, alternativeWaypoints, loopFreedom, reachability
     )
@@ -135,5 +141,15 @@ fun UpdateSynthesisModel.setAlternativeWaypoint(s1: Int, s2: Int): UpdateSynthes
     )
 
     return UpdateSynthesisModel(initRouting, finalRouting, properties)
+}
 
+fun UpdateSynthesisModel.clearProperties(): UpdateSynthesisModel {
+    val initRouting = this.initialRouting.map { listOf(it.source, it.target) }.toSet()
+    val finalRouting = this.finalRouting.map { listOf(it.source, it.target) }.toSet()
+
+    val properties = UpdateSynthesisModel.Properties(
+        null, null, null, null, reachability
+    )
+
+    return UpdateSynthesisModel(initRouting, finalRouting, properties)
 }

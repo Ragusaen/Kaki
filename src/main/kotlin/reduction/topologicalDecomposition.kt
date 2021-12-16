@@ -27,13 +27,11 @@ fun topologicalDecomposition(cuspt: CUSPT): List<CUSPT> {
             currentSubproblem = Subproblem(mutableSetOf(), scc.first(), -1)
         }
 
-        for (s in scc) {
-            val nexts = (cuspt.initialRouting[s] ?: setOf()) union (cuspt.finalRouting[s] ?: setOf())
-            val outdegree = nexts.size
-
-            nexts.filter { it !in scc }.map { switchToSCCId[it]!! }.forEach {
-                sccNarrowness[it] = sccNarrowness[it]!! + (sccNarrowness[i]!! / outdegree)
-            }
+        val nexts = scc.flatMap { s -> (cuspt.initialRouting[s] ?: setOf()) union (cuspt.finalRouting[s] ?: setOf()) }
+            .filter { it !in scc }
+        val outdegree = nexts.size
+        nexts.map { switchToSCCId[it]!! }.forEach {
+            sccNarrowness[it] = sccNarrowness[it]!! + (sccNarrowness[i]!! / outdegree)
         }
         currentSubproblem.switches.addAll(scc)
     }
@@ -45,12 +43,12 @@ fun topologicalDecomposition(cuspt: CUSPT): List<CUSPT> {
     subproblems.removeIf { it.switches.size <= 2 }
 
     val subCusps = subproblems.map { sp ->
-        val dfa = dfaOf<Switch>(sp.switches) { d ->
+        val dfa = dfaOf<Switch>(sp.switches) {
             val initialSwitchState = posDFAState[sp.initSwitch]!!.single()
             val finalSwitchState = if (sp.finalSwitch == -2) posDFAState[sp.finalSwitch]!! else setOf(posDFAState[sp.finalSwitch]!!.single())
 
             val oldToNewState = cuspt.policy.states.associateWith {
-                d.state(initial = it == initialSwitchState, final = it in finalSwitchState)
+                state(initial = it == initialSwitchState, final = it in finalSwitchState)
             }
 
             cuspt.policy.delta.forEach { (from, outgoing) ->
@@ -61,9 +59,9 @@ fun topologicalDecomposition(cuspt: CUSPT): List<CUSPT> {
             }
         }
 
-        val subreachability = dfaOf<Switch>(sp.switches) { d ->
-            val sI = d.state(initial = true)
-            val sF = d.state(final = true)
+        val subreachability = dfaOf<Switch>(sp.switches) {
+            val sI = state(initial = true)
+            val sF = state(final = true)
 
             sI.edgeTo(sF, sp.finalSwitch)
         }
