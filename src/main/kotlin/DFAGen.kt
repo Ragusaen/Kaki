@@ -17,73 +17,43 @@ object Cached {
 
 fun generateDFAFromUSMProperties(usm: UpdateSynthesisModel): DFA<Switch> {
     Cached.usm = usm
-    return generateDFAFromUSMPropertiesNoReachability(usm) intersect genReachabilityDFA(usm)
+    return DFATopologicalOrderReduction(generateDFAFromUSMPropertiesNoReachability(usm) intersect genReachabilityDFA(usm), Cached.tto)
 }
 
 
-fun generateDFAFromUSMPropertiesNoReachability(usm: UpdateSynthesisModel): DFA<Switch> {
+fun generateDFAFromUSMPropertiesNoReachability(usm: UpdateSynthesisModel, topologicalReduction: Boolean = true): DFA<Switch> {
     // NFA for waypoint
-    val combinedWaypointNFA = genCombinedWaypointDFA(usm)
-    if (Options.drawGraphs) combinedWaypointNFA.toGraphviz().toFile(File(GRAPHICS_OUT + "/waypointdfa.svg"))
+    val combinedWaypointNFA =
+        if(usm.waypoint != null && usm.waypoint.waypoints.isNotEmpty())
+            genCombinedDFAOf(usm, usm.waypoint.waypoints.map { waypointDFA(usm, it) }, true)
+        else null
 
-    val conditionalEnforcementNFA = genConditionalEnforcementDFA(usm)
-    if (Options.drawGraphs) conditionalEnforcementNFA.toGraphviz().toFile(File(GRAPHICS_OUT + "/condEnf.svg"))
+    val conditionalEnforcementNFA =
+        if (!usm.conditionalEnforcements.isNullOrEmpty())
+            genCombinedDFAOf(usm, usm.conditionalEnforcements.map { condEnforcementDFA(usm, it.s, it.sPrime) }, false)
+        else null
 
-    val alternativeWaypointNFA = genAlternativeWaypointDFA(usm)
-    if (Options.drawGraphs) alternativeWaypointNFA.toGraphviz().toFile(File(GRAPHICS_OUT + "/altWaypoint.svg"))
+    val alternativeWaypointNFA =
+        if (!usm.alternativeWaypoints.isNullOrEmpty())
+            genCombinedDFAOf(usm, usm.alternativeWaypoints.map { altWaypointDFA(usm, it.s1, it.s2) }, false)
+        else null
 
-    return combinedWaypointNFA intersect conditionalEnforcementNFA intersect alternativeWaypointNFA
+    val nfas = listOfNotNull(combinedWaypointNFA, conditionalEnforcementNFA, alternativeWaypointNFA)
+    return if (nfas.isEmpty())
+            DFA.acceptingAll(usm.switches)
+    else if (Options.noTopologicalNFAReduction || nfas.size == 1)
+        nfas.reduce { acc, dfa -> acc intersect dfa }
+    else
+        DFATopologicalOrderReduction(nfas.reduce { acc, dfa -> acc intersect dfa }, Cached.tto)
 }
 
 
-fun genCombinedWaypointDFA(usm: UpdateSynthesisModel): DFA<Switch> {
-    val waypoints = waypointDFAs(usm)
+fun genCombinedDFAOf(usm:UpdateSynthesisModel, all: List<DFA<Switch>>, topologicalReduction: Boolean): DFA<Switch> =
+    if(!topologicalReduction || Options.noTopologicalNFAReduction || all.size == 1)
+        all.reduce { acc, it -> acc intersect it }
+    else
+        all.reduce { acc, it -> DFATopologicalOrderReduction(acc intersect it, Cached.tto) }
 
-    if(Options.noTopologicalNFAReduction)
-        return waypoints.reduce { acc, it -> acc intersect it }
-
-    if(waypoints.size == 0)
-        return dfaOf(usm.switches){ state(true,true) }
-
-    if (waypoints.size > 1) {
-        return waypoints.reduce { acc, it -> DFATopologicalOrderReduction(acc intersect it, Cached.tto) }
-    } else {
-        return waypoints.reduce { acc, it -> acc intersect it }
-    }
-}
-
-fun genConditionalEnforcementDFA(usm: UpdateSynthesisModel): DFA<Switch> {
-    val condEnfDFA = dfaOf(usm.switches) {
-        val sI = state(initial = true, final = true)
-        if (usm.conditionalEnforcement == null)
-            return@dfaOf
-        val ss = state()
-        val sF = state(final = true)
-
-        sI.edgeTo(ss, usm.conditionalEnforcement.s)
-        ss.edgeTo(sF, usm.conditionalEnforcement.sPrime)
-        ss.edgeTo(sF, usm.conditionalEnforcement.sPrime)
-        sI.edgeTo(sF, usm.conditionalEnforcement.sPrime)
-    }
-
-    return condEnfDFA
-}
-
-fun genAlternativeWaypointDFA(usm: UpdateSynthesisModel): DFA<Switch> {
-    val altWayDFA = dfaOf(usm.switches) {
-        if (usm.alternativeWaypoint == null) {
-            state(initial = true, final = true)
-            return@dfaOf
-        }
-
-        val sI = state(initial = true)
-        val sF = state(final = true)
-        sI.edgeTo(sF, usm.alternativeWaypoint.s1)
-        sI.edgeTo(sF, usm.alternativeWaypoint.s2)
-    }
-
-    return altWayDFA
-}
 
 fun genReachabilityDFA(usm: UpdateSynthesisModel): DFA<Switch> =
     dfaOf<Switch>(usm.switches) {
@@ -97,7 +67,6 @@ fun genReachabilityDFA(usm: UpdateSynthesisModel): DFA<Switch> =
 fun waypointDFAs(usm: UpdateSynthesisModel): Set<DFA<Switch>> =
     usm.waypoint?.waypoints?.map { waypointDFA(usm, it) }?.toSet() ?: emptySet()
 
-
 fun waypointDFA(usm: UpdateSynthesisModel, w: Switch) =
     dfaOf<Switch>(usm.switches) {
         val sI = state(initial = true)
@@ -105,6 +74,26 @@ fun waypointDFA(usm: UpdateSynthesisModel, w: Switch) =
 
         sI.edgeTo(sJ, w)
         sJ.edgeToDead(w)
+    }
+
+
+fun condEnforcementDFA(usm: UpdateSynthesisModel, s: Switch, sPrime: Switch) =
+    dfaOf(usm.switches) {
+        val sI = state(initial = true, final = true)
+        val ss = state()
+        val sF = state(final = true)
+
+        sI.edgeTo(ss, s)
+        ss.edgeTo(sF, sPrime)
+        sI.edgeTo(sF, sPrime)
+    }
+
+fun altWaypointDFA(usm: UpdateSynthesisModel, s1: Switch, s2: Switch) =
+    dfaOf(usm.switches) {
+        val sI = state(initial = true)
+        val sF = state(final = true)
+        sI.edgeTo(sF, s1)
+        sI.edgeTo(sF, s2)
     }
 
 fun DFATopologicalOrderReduction(dfa: DFA<Switch>, tto: List<Set<Switch>>): DFA<Switch> {
@@ -116,10 +105,10 @@ fun DFATopologicalOrderReduction(dfa: DFA<Switch>, tto: List<Set<Switch>>): DFA<
         return dfa
 
     val ptoDFA = dfaOf<Switch>(dfa.alphabet) {
-        val states = listOf(state(initial = true)) + (1 until order.size - 1).map { state() } + listOf(state(final = true))
+        val states = listOf(state(initial = true)) + (1 until order.size).map { state() } + listOf(state(final = true))
 
         states.first().edgeToDead(labels - order.first())
-        for ((p, n, o) in states.zipWithNext().zip(order.drop(1)).map { Triple(it.first.first, it.first.second, it.second) }) {
+        for ((p, n, o) in states.zipWithNext().zip(order).map { Triple(it.first.first, it.first.second, it.second) }) {
             p.edgeTo(n, o)
             n.edgeToDead(labels - o)
         }
@@ -135,7 +124,7 @@ fun totalTopologicalOrder(cuspt: CUSPT): List<Set<Switch>> {
     val sccNarrowness = ptoi.map { it.index to 0.0 }.toMap().toMutableMap()
 
     assert(ptoi.first().value == setOf(-1))
-    sccNarrowness[1] = 1.0
+    sccNarrowness[0] = 1.0
 
     for ((i, scc) in ptoi) {
         val a = scc.flatMap { edges[it] ?: setOf() }.filter { it !in scc }.map { switchToSCCId[it]!! }.toSet()

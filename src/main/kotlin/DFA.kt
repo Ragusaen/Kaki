@@ -73,7 +73,7 @@ class DFA<T>(val delta: Map<State, Map<T, State>>, val initial: State, val final
     companion object {
         const val deadstate = -1
 
-        fun <T> acceptingAll(alphabet: Set<T>) = dfaOf(alphabet) { state(initial = true) }
+        fun <T> acceptingAll(alphabet: Set<T>) = dfaOf(alphabet) { state(initial = true, final = true) }
     }
 
     val states = delta.keys + delta.flatMap { it.value.map { it.value } }

@@ -2,6 +2,7 @@ import kotlinx.cli.ArgParser
 import kotlinx.cli.ArgType
 import kotlinx.cli.default
 import translate.*
+import utils.*
 import verification.Verifier
 import verification.sequentialSearch
 import java.io.File
@@ -128,6 +129,7 @@ fun runProblem() {
         }
         v.Low.println("Decomposed topology into ${subcuspts.size} subproblems")
         v.Low.println("Topological decomposition took ${time / 1000.0} seconds")
+        v.High.println("Switches of subproblems: ${subcuspts.map { _cuspt -> _cuspt.allSwitches.count { _cuspt.initialRouting[it] != _cuspt.finalRouting[it] } }}")
 
         var omega = listOf<Batch>()
         var unsolvable = false
@@ -157,6 +159,8 @@ fun runProblem() {
 
             val pnml = generatePnmlFileFromPetriGame(petriGame)
             if (Options.debugPath != null) {
+                if (!File(PETRI_OUT).exists())
+                    File("$PETRI_OUT/").mkdir()
                 File(PETRI_OUT + "/" + Options.debugPath!! + "_model$i.pnml").writeText(pnml)
                 File(PETRI_OUT + "/" + Options.debugPath!! + "_query$i.q").writeText(queryFile.readText())
             }
@@ -304,6 +308,9 @@ const val version = "1.12"
 
 fun main(args: Array<String>) {
     println("Version: $version \n ${args.joinToString(" ")}")
+
+//    generateNewFilesByRandom({ u, r -> addAlternativeWaypointToUSM(u, r) }, Path.of("""artefact/data/zoo_json"""), "_alt_waypoint", 0, 4)
+//    return
 
     Options.argParser.parse(args)
     if (Options.onlyFLIPSubpaths != null) calcFlipSubpaths()
