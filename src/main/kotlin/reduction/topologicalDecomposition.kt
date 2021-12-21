@@ -1,3 +1,4 @@
+import reduction.Rational
 import translate.*
 import java.util.*
 
@@ -10,17 +11,17 @@ fun topologicalDecomposition(cuspt: CUSPT): List<CUSPT> {
     val ptoi: Iterable<IndexedValue<SCC>> = pto.withIndex()
     val switchToSCCId: Map<Switch, SCCId> = ptoi.flatMap { (sccid, scc) -> scc.map { Pair(it, sccid) } }.toMap()
 
-    val sccNarrowness = ptoi.associate { Pair(it.index, 0.0) }.toMutableMap() // SCC to Narrowness
+    val sccNarrowness = ptoi.associate { Pair(it.index, Rational(0,1)) }.toMutableMap() // SCC to Narrowness
 
     val sccId = ptoi.first { cuspt.ingressSwitch in it.value }.index
-    sccNarrowness[sccId] = 1.0
+    sccNarrowness[sccId] = Rational(1,1)
 
     data class Subproblem(val switches: MutableSet<Switch>, val initSwitch: Switch, var finalSwitch: Switch)
     var currentSubproblem = Subproblem(mutableSetOf(), cuspt.ingressSwitch, -1)
     val subproblems = mutableListOf<Subproblem>()
 
     for ((i, scc) in ptoi) {
-        if (sccNarrowness[i]!! == 1.0 && scc.size == 1 && posDFAState[scc.first()]!!.size == 1 && currentSubproblem.switches.isNotEmpty()) {
+        if (sccNarrowness[i]!! == Rational(1,1) && scc.size == 1 && posDFAState[scc.first()]!!.size == 1 && currentSubproblem.switches.isNotEmpty()) {
             currentSubproblem.switches.addAll(scc)
             currentSubproblem.finalSwitch = scc.first()
             subproblems.add(currentSubproblem)

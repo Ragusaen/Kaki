@@ -7,6 +7,7 @@ import UpdateSynthesisModel
 import generateCUSPFromUSM
 import generateCUSPTFromCUSP
 import partialTopologicalOrder
+import reduction.Rational
 import java.io.File
 
 object Cached {
@@ -17,7 +18,10 @@ object Cached {
 
 fun generateDFAFromUSMProperties(usm: UpdateSynthesisModel): DFA<Switch> {
     Cached.usm = usm
-    return DFATopologicalOrderReduction(generateDFAFromUSMPropertiesNoReachability(usm) intersect genReachabilityDFA(usm), Cached.tto)
+    return if (Options.noTopologicalNFAReduction)
+            generateDFAFromUSMPropertiesNoReachability(usm) intersect genReachabilityDFA(usm)
+        else
+            DFATopologicalOrderReduction(generateDFAFromUSMPropertiesNoReachability(usm) intersect genReachabilityDFA(usm), Cached.tto)
 }
 
 
@@ -25,17 +29,17 @@ fun generateDFAFromUSMPropertiesNoReachability(usm: UpdateSynthesisModel, topolo
     // NFA for waypoint
     val combinedWaypointNFA =
         if(usm.waypoint != null && usm.waypoint.waypoints.isNotEmpty())
-            genCombinedDFAOf(usm, usm.waypoint.waypoints.map { waypointDFA(usm, it) }, true)
+            genCombinedDFAOf(usm.waypoint.waypoints.map { waypointDFA(usm, it) }, true)
         else null
 
     val conditionalEnforcementNFA =
         if (!usm.conditionalEnforcements.isNullOrEmpty())
-            genCombinedDFAOf(usm, usm.conditionalEnforcements.map { condEnforcementDFA(usm, it.s, it.sPrime) }, false)
+            genCombinedDFAOf(usm.conditionalEnforcements.map { condEnforcementDFA(usm, it.s, it.sPrime) }, false)
         else null
 
     val alternativeWaypointNFA =
         if (!usm.alternativeWaypoints.isNullOrEmpty())
-            genCombinedDFAOf(usm, usm.alternativeWaypoints.map { altWaypointDFA(usm, it.s1, it.s2) }, false)
+            genCombinedDFAOf(usm.alternativeWaypoints.map { altWaypointDFA(usm, it.s1, it.s2) }, false)
         else null
 
     val nfas = listOfNotNull(combinedWaypointNFA, conditionalEnforcementNFA, alternativeWaypointNFA)
@@ -48,7 +52,7 @@ fun generateDFAFromUSMPropertiesNoReachability(usm: UpdateSynthesisModel, topolo
 }
 
 
-fun genCombinedDFAOf(usm:UpdateSynthesisModel, all: List<DFA<Switch>>, topologicalReduction: Boolean): DFA<Switch> =
+fun genCombinedDFAOf(all: List<DFA<Switch>>, topologicalReduction: Boolean): DFA<Switch> =
     if(!topologicalReduction || Options.noTopologicalNFAReduction || all.size == 1)
         all.reduce { acc, it -> acc intersect it }
     else
@@ -63,9 +67,6 @@ fun genReachabilityDFA(usm: UpdateSynthesisModel): DFA<Switch> =
         sI.edgeTo(sF, usm.reachability.finalNode)
         sF.edgeToDead(usm.switches)
     }
-
-fun waypointDFAs(usm: UpdateSynthesisModel): Set<DFA<Switch>> =
-    usm.waypoint?.waypoints?.map { waypointDFA(usm, it) }?.toSet() ?: emptySet()
 
 fun waypointDFA(usm: UpdateSynthesisModel, w: Switch) =
     dfaOf<Switch>(usm.switches) {
@@ -121,10 +122,10 @@ fun totalTopologicalOrder(cuspt: CUSPT): List<Set<Switch>> {
     val edges = (cuspt.finalRouting.toList() + cuspt.initialRouting.toList()).groupBy { it.first }.map { it.key to it.value.flatMap { it.second } }.toMap()
     val ptoi = partialTopologicalOrder(cuspt).withIndex()
     val switchToSCCId: Map<Switch, Int> = ptoi.flatMap { (sccid, scc) -> scc.map { Pair(it, sccid) } }.toMap()
-    val sccNarrowness = ptoi.map { it.index to 0.0 }.toMap().toMutableMap()
+    val sccNarrowness = ptoi.map { it.index to Rational(0,1) }.toMap().toMutableMap()
 
     assert(ptoi.first().value == setOf(-1))
-    sccNarrowness[0] = 1.0
+    sccNarrowness[0] = Rational(1,1)
 
     for ((i, scc) in ptoi) {
         val a = scc.flatMap { edges[it] ?: setOf() }.filter { it !in scc }.map { switchToSCCId[it]!! }.toSet()
@@ -136,7 +137,7 @@ fun totalTopologicalOrder(cuspt: CUSPT): List<Set<Switch>> {
     val bunches = mutableListOf<Set<Switch>>()
     val next = mutableSetOf<Switch>()
     for ((i, scc) in ptoi) {
-        if (sccNarrowness[i]!! == 1.0) {
+        if (sccNarrowness[i]!! == Rational(1,1)) {
             bunches.add(next.toSet() + scc)
             next.clear()
         } else {
