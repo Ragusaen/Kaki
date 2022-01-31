@@ -6,7 +6,9 @@ import pcreateTempFile
 import println
 import java.io.File
 import java.nio.file.Path
+import kotlin.math.ceil
 import kotlin.math.floor
+import kotlin.math.max
 import kotlin.math.roundToInt
 import kotlin.system.measureTimeMillis
 
@@ -36,6 +38,41 @@ class Verifier(val modelPath: File) {
         }
     }
 }
+
+//Bisection search. k starts at 5
+fun bisectionSearch(verifier: Verifier, queryPath: File, upperBound: Int): List<Batch>?{
+    var query = queryPath.readText()
+    var k = if (upperBound < 5) upperBound else 5
+    var lower = if (Options.maxSwicthesInBatch != 0) upperBound / Options.maxSwicthesInBatch else 0
+    k = max(k,lower)
+    var upper = upperBound
+    val tempQueryFile = pcreateTempFile("query")
+    var strategy: String? = null
+    var lowestBatchNum = Int.MAX_VALUE
+
+    while(k < lowestBatchNum){
+        query = query.replace("UPDATE_P_BATCHES <= [0-9]*".toRegex(), "UPDATE_P_BATCHES <= $k")
+        tempQueryFile.writeText(query)
+        val (vf, s) = verifier.verifyQuery(tempQueryFile.path)
+        v.High.println("Verification ${if (vf) "succeeded" else "failed"} in ${verifier.lastVerificationTime} seconds with <= $k batches")
+
+        if(vf){
+            strategy = s
+            upper = k
+            lowestBatchNum = k
+            k = ceil((upper+lower)/2.0).toInt()
+        }else{
+            lower = k
+            //If verification failed for k=upper, then we are done
+            if(k == upper) break
+            k = ceil((upper+lower)/2.0).toInt()
+        }
+    }
+
+    return if (strategy != null) getUpdateBatchesFromStrategy(strategy) else null
+}
+
+
 
 fun sequentialSearch(verifier: Verifier, queryPath: File, upperBound: Int): List<Batch>? {
     var case: Int

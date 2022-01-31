@@ -4,6 +4,7 @@ import kotlinx.cli.default
 import translate.*
 import utils.*
 import verification.Verifier
+import verification.bisectionSearch
 import verification.sequentialSearch
 import java.io.File
 import java.lang.Integer.max
@@ -173,7 +174,7 @@ fun runProblem() {
             val verifier: Verifier
             time = measureTimeMillis {
                 verifier = Verifier(modelFile)
-                val ub = sequentialSearch(verifier, queryFile, updateSwitchCount)
+                val ub = bisectionSearch(verifier, queryFile, updateSwitchCount)
                 val omegaPrime = ub?.mapIndexed { i, b ->
                     if (i == 0)
                         b union eqclasses.filter { it.batchOrder == BatchOrder.FIRST }.fold(setOf()) { acc, a -> acc union a.switches }
