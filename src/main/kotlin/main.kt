@@ -134,6 +134,7 @@ fun runProblem() {
 
         var omega = listOf<Batch>()
         var unsolvable = false
+        var minReqBatches = 0
 
         subproblems@for ((i, subcuspt) in subcuspts.withIndex()) {
             v.High.println("-- Solving subproblem $i --")
@@ -174,7 +175,11 @@ fun runProblem() {
             val verifier: Verifier
             time = measureTimeMillis {
                 verifier = Verifier(modelFile)
-                val ub = bisectionSearch(verifier, queryFile, updateSwitchCount)
+                val ub = bisectionSearch(verifier, queryFile, updateSwitchCount, minReqBatches)
+
+                if(ub != null)
+                    minReqBatches = max(minReqBatches, ub.size)
+
                 val omegaPrime = ub?.mapIndexed { i, b ->
                     if (i == 0)
                         b union eqclasses.filter { it.batchOrder == BatchOrder.FIRST }.fold(setOf()) { acc, a -> acc union a.switches }

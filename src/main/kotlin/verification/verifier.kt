@@ -40,10 +40,11 @@ class Verifier(val modelPath: File) {
 }
 
 //Bisection search. k starts at 5
-fun bisectionSearch(verifier: Verifier, queryPath: File, upperBound: Int): List<Batch>?{
+fun bisectionSearch(verifier: Verifier, queryPath: File, upperBound: Int, minBatches: Int): List<Batch>?{
     var query = queryPath.readText()
     var k = if (upperBound < 5) upperBound else 5
     var lower = if (Options.maxSwicthesInBatch != 0) upperBound / Options.maxSwicthesInBatch else 0
+    lower = max(lower, minBatches)
     k = max(k,lower)
     var upper = upperBound
     val tempQueryFile = pcreateTempFile("query")
