@@ -33,7 +33,7 @@ class Verifier(val modelPath: File) {
         } else if (output.contains("is NOT satisfied"))
             Pair(false, null)
         else {
-            v.Low.println(pro.errorStream.readAllBytes().map { Char(it.toInt()) }.joinToString(""))
+            v.Low.println(pro.errorStream.readAllBytes().map { it.toInt().toChar() }.joinToString(""))
             throw OutOfMemoryError("VerifyPN ran out of memory")
         }
     }
