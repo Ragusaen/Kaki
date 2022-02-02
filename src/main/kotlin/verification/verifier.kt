@@ -6,20 +6,23 @@ import pcreateTempFile
 import println
 import java.io.File
 import java.nio.file.Path
+import java.util.*
 import kotlin.math.floor
 import kotlin.math.roundToInt
 import kotlin.system.measureTimeMillis
 
+class VerifyPNError(msg: String) : Exception(msg)
+
 class Verifier(val modelPath: File) {
     var lastVerificationTime = -1.0
     fun verifyQuery(queryPath: String): Pair<Boolean, String?> {
-        val command = "${Options.enginePath.toAbsolutePath()} --strategy-output _ ${modelPath.absolutePath} $queryPath -q 0 -r 0"
+        val command = "${Options.enginePath.toAbsolutePath()} --strategy-output _ ${modelPath.absolutePath} $queryPath -q 0 -r 0 -s DFS"
         if (Options.outputVerifyPN)
             v.High.println(command)
         val pro: Process
         pro = Runtime.getRuntime().exec(command)
         pro.waitFor()
-        val output = pro.inputStream.readAllBytes().map { it.toInt().toChar() }.joinToString("")
+        val output = String(pro.inputStream.readAllBytes())
         lastVerificationTime = """Time \(seconds\) *: (\d+\.\d+)""".toRegex().find(output)?.groupValues?.get(1)?.toDouble() ?: -1.0
         if (Options.outputVerifyPN)
             v.High.println(output)
@@ -31,8 +34,9 @@ class Verifier(val modelPath: File) {
         } else if (output.contains("is NOT satisfied"))
             Pair(false, null)
         else {
-            v.Low.println(pro.errorStream.readAllBytes().map { Char(it.toInt()) }.joinToString(""))
-            throw OutOfMemoryError("VerifyPN ran out of memory")
+            val s = String(pro.errorStream.readAllBytes())
+            System.err.println(s)
+            throw VerifyPNError(s)
         }
     }
 }

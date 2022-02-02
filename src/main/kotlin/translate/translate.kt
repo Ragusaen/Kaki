@@ -368,6 +368,6 @@ fun generatePnmlFileFromPetriGame(petriGame: PetriGame): String {
 }
 
 fun generateQuery(finalDFAState: List<Place>) =
-        "EF (UPDATE_P_BATCHES <= 0 and (" +
+        "control: AF (UPDATE_P_BATCHES <= 0 and (" +
                 finalDFAState.joinToString(" or ") { "${it.name} == 1" } +
         "))"

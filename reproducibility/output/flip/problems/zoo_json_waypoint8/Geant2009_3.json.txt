@@ -1,0 +1,6 @@
+Version: 1.2.15 
+ _ problems/zoo_json_waypoint8/Geant2009_3.json -f output/flip/problems/zoo_json_waypoint8/Geant2009_3.json.subpaths
+Flip subpaths generated in 0.2 seconds!
+real 0.39
+user 0.88
+sys 0.06
