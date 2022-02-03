@@ -16,6 +16,7 @@ data class UpdateSynthesisModel(
     val waypoint: Waypoint? = _properties.waypoint
     val conditionalEnforcements: List<ConditionalEnforcement>? = _properties.conditionalEnforcements
     val alternativeWaypoints: List<AlternativeWaypoint>? = _properties.alternativeWaypoints
+    val dfa: DFA? = _properties.DFA
 
     // we never consider loop-freedom since we always have reachability, which preserves loop-freedom
     val loopFreedom: LoopFreedom? = _properties.loopFreedom
@@ -63,7 +64,22 @@ data class UpdateSynthesisModel(
         @SerialName("ConditionalEnforcement") val conditionalEnforcements: List<ConditionalEnforcement>? = null,
         @SerialName("AlternativeWaypoint") val alternativeWaypoints: List<AlternativeWaypoint>? = null,
         @SerialName("LoopFreedom")  val loopFreedom: LoopFreedom? = null,
-        @SerialName("Reachability") val reachability: Reachability
+        @SerialName("Reachability") val reachability: Reachability,
+        @SerialName("DFA") val DFA: DFA? = null
+    )
+
+    @Serializable
+    class DFA(
+        @SerialName("initialState") val initialState: Int,
+        @SerialName("finalStates")   val finalStates: List<Int>,
+        @SerialName("edges")        val edges: List<DfaEdge>
+    )
+
+    @Serializable
+    class DfaEdge(
+        @SerialName("from") val from: Int,
+        @SerialName("to")   val to: Int,
+        @SerialName("label")val label: Int
     )
 
     @Serializable

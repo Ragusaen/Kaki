@@ -25,6 +25,7 @@ fun generateDFAFromUSMProperties(usm: UpdateSynthesisModel): DFA<Switch> {
 }
 
 
+
 fun generateDFAFromUSMPropertiesNoReachability(usm: UpdateSynthesisModel, topologicalReduction: Boolean = true): DFA<Switch> {
     // NFA for waypoint
     val combinedWaypointNFA =
@@ -42,7 +43,12 @@ fun generateDFAFromUSMPropertiesNoReachability(usm: UpdateSynthesisModel, topolo
             genCombinedDFAOf(usm.alternativeWaypoints.map { altWaypointDFA(usm, it.s1, it.s2) }, false)
         else null
 
-    val nfas = listOfNotNull(combinedWaypointNFA, conditionalEnforcementNFA, alternativeWaypointNFA)
+    val arbitraryNFA =
+        if (usm.dfa != null)
+            genArbitraryDfaDFA(usm, usm.dfa)
+        else null
+
+    val nfas = listOfNotNull(combinedWaypointNFA, conditionalEnforcementNFA, alternativeWaypointNFA, arbitraryNFA)
     return if (nfas.isEmpty())
             DFA.acceptingAll(usm.switches)
     else if (Options.noTopologicalNFAReduction || nfas.size == 1)
@@ -81,12 +87,14 @@ fun waypointDFA(usm: UpdateSynthesisModel, w: Switch) =
 fun condEnforcementDFA(usm: UpdateSynthesisModel, s: Switch, sPrime: Switch) =
     dfaOf(usm.switches) {
         val sI = state(initial = true, final = true)
-        val ss = state()
+        val sMet = state()
+        val sPrimeMet = state(final = true)
         val sF = state(final = true)
 
-        sI.edgeTo(ss, s)
-        ss.edgeTo(sF, sPrime)
-        sI.edgeTo(sF, sPrime)
+        sI.edgeTo(sMet, s)
+        sMet.edgeTo(sF, sPrime)
+        sI.edgeTo(sPrimeMet, sPrime)
+        sPrimeMet.edgeToDead(s)
     }
 
 fun altWaypointDFA(usm: UpdateSynthesisModel, s1: Switch, s2: Switch) =
@@ -95,6 +103,26 @@ fun altWaypointDFA(usm: UpdateSynthesisModel, s1: Switch, s2: Switch) =
         val sF = state(final = true)
         sI.edgeTo(sF, s1)
         sI.edgeTo(sF, s2)
+    }
+
+fun genArbitraryDfaDFA(usm: UpdateSynthesisModel, dfa: UpdateSynthesisModel.DFA) =
+    dfaOf(usm.switches) {
+        val stateToNewStateMap = dfa.finalStates.associateWith { state(final = true) }.toMutableMap()
+        if (dfa.initialState in dfa.finalStates)
+            stateToNewStateMap[dfa.initialState] = state(initial = true, final = true)
+        else
+            stateToNewStateMap[dfa.initialState] = state(initial = true)
+
+        for (edge in dfa.edges) {
+            if (stateToNewStateMap[edge.from] == null)
+                stateToNewStateMap[edge.from] = state()
+            if (stateToNewStateMap[edge.to] == null)
+                stateToNewStateMap[edge.to] = state()
+        }
+
+        for (e in dfa.edges) {
+            stateToNewStateMap[e.from]!!.edgeTo(stateToNewStateMap[e.to]!!, e.label)
+        }
     }
 
 fun DFATopologicalOrderReduction(dfa: DFA<Switch>, tto: List<Set<Switch>>): DFA<Switch> {
