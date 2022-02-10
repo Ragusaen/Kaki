@@ -1,2 +1,2 @@
 # Kaki
-Network update synthesiser supporting multiple forwarding and generalised policies.
+Network update synthesiser supporting concurrent update batches, multiple forwarding and generalised routing policies.
