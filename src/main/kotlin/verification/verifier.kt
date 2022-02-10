@@ -18,14 +18,16 @@ class VerifyPNError(msg: String) : Exception(msg)
 class Verifier(val modelPath: File) {
     var lastVerificationTime = -1.0
     fun verifyQuery(queryPath: String): Pair<Boolean, String?> {
-        val command = "${Options.enginePath.toAbsolutePath()} --strategy-output _ ${modelPath.absolutePath} $queryPath -q 0 -r 0 -s DFS"
+        val command =
+            "${Options.enginePath.toAbsolutePath()} --strategy-output _ ${modelPath.absolutePath} $queryPath -q 0 -r 0 -s RDFS"
         if (Options.outputVerifyPN)
             v.High.println(command)
         val pro: Process
         pro = Runtime.getRuntime().exec(command)
         pro.waitFor()
         val output = String(pro.inputStream.readAllBytes())
-        lastVerificationTime = """Time \(seconds\) *: (\d+\.\d+)""".toRegex().find(output)?.groupValues?.get(1)?.toDouble() ?: -1.0
+        lastVerificationTime =
+            """Time \(seconds\) *: (\d+\.\d+)""".toRegex().find(output)?.groupValues?.get(1)?.toDouble() ?: -1.0
         if (Options.outputVerifyPN)
             v.High.println(output)
 
@@ -44,39 +46,48 @@ class Verifier(val modelPath: File) {
 }
 
 //Bisection search. k starts at 5
-fun bisectionSearch(verifier: Verifier, queryPath: File, upperBound: Int, minBatches: Int): List<Batch>?{
+fun bisectionSearch(verifier: Verifier, queryPath: File, upperBound: Int, minBatches: Int): List<Batch>? {
     var query = queryPath.readText()
     var k = if (upperBound < 5) upperBound else 5
     var lower = if (Options.maxSwicthesInBatch != 0) upperBound / Options.maxSwicthesInBatch else 0
     lower = max(lower, minBatches)
-    k = max(k,lower)
+    k = max(k, lower)
     var upper = upperBound
     val tempQueryFile = pcreateTempFile("query")
     var strategy: String? = null
     var lowestBatchNum = Int.MAX_VALUE
 
-    while(k < lowestBatchNum){
+    var first = true
+    while (k < lowestBatchNum) {
         query = query.replace("UPDATE_P_BATCHES <= [0-9]*".toRegex(), "UPDATE_P_BATCHES <= $k")
         tempQueryFile.writeText(query)
         val (vf, s) = verifier.verifyQuery(tempQueryFile.path)
         v.High.println("Verification ${if (vf) "succeeded" else "failed"} in ${verifier.lastVerificationTime} seconds with <= $k batches")
 
-        if(vf){
+        if (vf) {
             strategy = s
             upper = k
             lowestBatchNum = k
-            k = ceil((upper+lower)/2.0).toInt()
-        }else{
+            k = ceil((upper + lower) / 2.0).toInt()
+        } else {
             lower = k
-            //If verification failed for k=upper, then we are done
-            if(k == upper) break
-            k = ceil((upper+lower)/2.0).toInt()
+
+            if (first && k != upper) {
+                // If the first verification fails, then check upper bound
+                // this is to faster determine negative cases as larger solutions are very unlikely
+                k = upper
+            } else {
+                //If verification failed for k=upper, then we are done
+                if (k == upper) break
+                k = ceil((upper + lower) / 2.0).toInt()
+            }
         }
+
+        first = false
     }
 
     return if (strategy != null) getUpdateBatchesFromStrategy(strategy) else null
 }
-
 
 
 fun sequentialSearch(verifier: Verifier, queryPath: File, upperBound: Int): List<Batch>? {

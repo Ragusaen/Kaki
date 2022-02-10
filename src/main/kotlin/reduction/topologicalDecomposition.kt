@@ -11,6 +11,13 @@ fun topologicalDecomposition(cuspt: CUSPT): List<CUSPT> {
     val ptoi: Iterable<IndexedValue<SCC>> = pto.withIndex()
     val switchToSCCId: Map<Switch, SCCId> = ptoi.flatMap { (sccid, scc) -> scc.map { Pair(it, sccid) } }.toMap()
 
+    if (posDFAState[cuspt.ingressSwitch]!!.isEmpty()) {
+
+        v.Minimal.println("Problem has trivially unsolvable policy!")
+        System.exit(0)
+    }
+
+
     val sccNarrowness = ptoi.associate { Pair(it.index, Rational(0,1)) }.toMutableMap() // SCC to Narrowness
 
     val sccId = ptoi.first { cuspt.ingressSwitch in it.value }.index

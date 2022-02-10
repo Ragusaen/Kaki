@@ -88,13 +88,11 @@ fun condEnforcementDFA(usm: UpdateSynthesisModel, s: Switch, sPrime: Switch) =
     dfaOf(usm.switches) {
         val sI = state(initial = true, final = true)
         val sMet = state()
-        val sPrimeMet = state(final = true)
         val sF = state(final = true)
 
         sI.edgeTo(sMet, s)
         sMet.edgeTo(sF, sPrime)
-        sI.edgeTo(sPrimeMet, sPrime)
-        sPrimeMet.edgeToDead(s)
+        sI.edgeTo(sF, sPrime)
     }
 
 fun altWaypointDFA(usm: UpdateSynthesisModel, s1: Switch, s2: Switch) =
