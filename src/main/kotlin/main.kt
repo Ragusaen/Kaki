@@ -139,6 +139,11 @@ fun runProblem() {
         subproblems@for ((i, subcuspt) in subcuspts.withIndex()) {
             v.High.println("-- Solving subproblem $i --")
 
+            // If this subproblem contains no updateble switches, skip it. This is a small 'hack' due to multiforwarding
+            // trivial problems not getting discarded by the topological decompositioning.
+            if (subcuspt.allSwitches.none { subcuspt.initialRouting[it]!! != subcuspt.finalRouting[it]!! })
+                continue@subproblems;
+
             val eqclasses = discoverEquivalenceClasses(subcuspt)
 
             v.High.println(eqclasses.joinToString("\n"))
