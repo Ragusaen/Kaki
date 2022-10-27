@@ -1,5 +1,6 @@
 import kotlinx.cli.ArgParser
 import kotlinx.cli.ArgType
+import kotlinx.cli.Subcommand
 import kotlinx.cli.default
 import translate.*
 import utils.*
@@ -312,6 +313,27 @@ object Options {
         description = "Only print once"
     ).default(false)
 
+    val generatePolicyFiles by argParser.option(
+        ArgType.Boolean,
+        fullName = "gen_policy_files",
+        description = "Generates json files with new specified policies from original json problems. Should be followed be specifying amount of --waypoints, --alt_waypoints and --cond_enf."
+    ).default(false)
+
+    val waypoints by argParser.option(
+        ArgType.Int,
+        fullName = "waypoints"
+    ).default(0)
+
+    val altWaypoint by argParser.option(
+        ArgType.Int,
+        fullName = "alt_waypoints"
+    ).default(0)
+
+    val condEnf by argParser.option(
+        ArgType.Int,
+        fullName = "cond_enf"
+    ).default(0)
+
     val outputVerifyPN by argParser.option(ArgType.Boolean, shortName = "P", description = "output the output from verifypn").default(false)
 }
 
@@ -320,11 +342,14 @@ const val version = "1.15"
 fun main(args: Array<String>) {
     println("Version: $version \n ${args.joinToString(" ")}")
 
-//    generateNewFilesByRandom({ u, r -> addAlternativeWaypointToUSM(u, r) }, Path.of("""artefact/data/zoo_json"""), "_alt_waypoint", 0, 4)
-//    return
+    //generateNewFilesByRandom({ u, r -> addAlternativeWaypointToUSM(u, r) }, Path.of("""artefact/data/zoo_json"""), "_alt_waypoint", 0, 4)
+    //return
 
     Options.argParser.parse(args)
-    if (Options.onlyFLIPSubpaths != null) calcFlipSubpaths()
+
+    if (Options.generatePolicyFiles){
+
+    } else if (Options.onlyFLIPSubpaths != null) calcFlipSubpaths()
     else runProblem()
 }
 

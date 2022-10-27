@@ -17,6 +17,8 @@ class Measure(Enum):
     Parallel = 7
     FlipTime = 8
     Decompositions = 9
+    PreconditionFailed = 10
+    FlipDFATime = 11
 
 
 class TestData:
@@ -31,7 +33,7 @@ class TestData:
         return self.__str__()
 
 
-def parse_results(output_dir: path, property_parsers: [Callable[[str], (Measure, Any)]]) -> [TestData]:
+def parse_results(output_dir: path, property_parsers) -> [TestData]:
     res = []
     for dir, dnames, fnames in os.walk(output_dir):
         for f in fnames:
@@ -62,7 +64,7 @@ def fm(measure: Measure, regex: str, type: str):
 
 
 def kaki_total_time(s):
-    tt = re.search(r"Total program runtime: +(\d+\.\d+) +seconds", s)
+    tt = re.search(r"Total program runtime: (\d+\.\d+) seconds", s)
     st = re.search(r"sys (\d+\.\d+)", s)
 
     if tt is not None and st is not None:
@@ -85,7 +87,8 @@ def handle_results_kaki(output_dir: path):
         lambda s: (Measure.TotalTime, kaki_total_time(s)),
         lambda s: (Measure.M1TotalTime,
                    sum(map(lambda x: float(x), re.findall(r'Subproblem verification (?:succeeded|failed) in (\d+\.\d+) seconds', s)))),
-        fm(Measure.Decompositions, r"Decomposed topology into (\d+) subproblems", 'int')
+        fm(Measure.Decompositions, r"Decomposed topology into (\d+) subproblems", 'int'),
+        lambda s: (Measure.PreconditionFailed, False)
     ])
 
 
@@ -116,9 +119,21 @@ def handle_results_flip(output_dir: path):
         fm(Measure.FlipTime, 'Finished in +(\d+\.\d+) +seconds', 'float'),
         lambda s: (Measure.TotalTime, flip_total_time(s)),
         lambda s: (Measure.UsesTagAndMatch, re.search('add-tag', s) is not None),
-        lambda s: (Measure.ModelTooBig, re.search('Model too large for size-limited license', s) is not None)
+        lambda s: (Measure.ModelTooBig, re.search('Model too large for size-limited license', s) is not None),
+        lambda s: (Measure.PreconditionFailed, re.search('FLIP.flip.PreconditionFailedError', s) is not None or re.search('FLIP.verify.InvalidNetwork', s) is not None),
+        fm(Measure.FlipDFATime, r'Flip subpaths generated in (\d+\.\d+) seconds!', 'float')
     ])
+    
+def netstack_time(s: str):
+    if 'returned non-zero exit status 137' in s or 'DUE TO TIME LIMIT' in s or s == "" or "out-of-memory" in s:
+        return None
+    return let(re_null(re.search(r'user (\d+\.\d+)', s), 'float'), lambda x: x if x is not None and x > 0 else 0.01)
 
+def handle_results_netstack(output_dir: path):
+    return parse_results(output_dir, [
+        lambda s: (Measure.TotalTime, netstack_time(s)),
+        lambda s: (Measure.PreconditionFailed, False)
+    ])
 
 def handle_results_seq21(output_dir: path):
     return parse_results(output_dir, [
